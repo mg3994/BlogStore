@@ -1,0 +1,31 @@
+name: l10n
+description: A sample command-line application.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace
+
+flutter_intl:
+  enabled: true
+  main_locale: en
+
+# Add regular dependencies here.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl:
+
+  material_ui: 
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints:
+  intl_utils:
+
+flutter:
+  generate: true

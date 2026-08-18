@@ -1,0 +1,25 @@
+name: blogstore
+description: "A new Flutter project."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - shared/**
+
+dependencies:
+  flutter:
+    sdk: flutter
+  l10n:
+    path: shared/l10n
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  kaisel_lint:
+
+flutter:
+  uses-material-design: true
