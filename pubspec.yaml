@@ -1,14 +1,10 @@
 name: exports
-description: A sample command-line application.
+description: Core exports package for Blog Store application.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
 
 environment:
-  sdk: ^3.13.0
+  sdk: '>=3.0.0 <4.0.0'
 
-resolution: workspace
-
-# Add regular dependencies here.
 dependencies:
   bloc_signals_flutter: ^1.2.0
   dio: ^5.11.0
@@ -24,3 +20,4 @@ dependencies:
   material_ui:
 
 dev_dependencies:
+  test: ^1.24.0
