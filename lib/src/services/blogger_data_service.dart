@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import '../config/env_config.dart';
 import '../domain/models/resolved_id.dart';
 import 'schema_override.dart';
 
-typedef Fetcher = Future<String?> Function(String url);
+typedef Fetcher = Future<String?> Function(String url, {Map<String, String>? headers});
 
 class BloggerDataService {
   final Dio? dio;
@@ -65,12 +66,34 @@ class BloggerDataService {
     return null;
   }
 
-  /// Fetches a Blogger post's JSON feed using HTTP and extracts its JSON-LD.
+  /// Fetches a Blogger post's JSON schema.
+  /// If authenticated (`idToken` provided), requests the v3 REST API endpoint.
+  /// Otherwise, requests the unauthenticated JSON feed endpoint.
   Future<Map<String, dynamic>?> fetchPostSchema({
     required String blogId,
     required String postId,
+    String? idToken,
   }) async {
-    final url = 'https://www.blogger.com/feeds/$blogId/posts/default/$postId?alt=json';
+    if (idToken != null && idToken.isNotEmpty) {
+      // Authenticated Blogger REST API v3
+      final url = '${EnvConfig.bloggerV3ApiBaseUrl}/blogs/$blogId/posts/$postId';
+      try {
+        final bodyText = await _fetchUrlText(
+          url,
+          headers: {'Authorization': 'Bearer $idToken'},
+        );
+        if (bodyText != null && bodyText.isNotEmpty) {
+          final data = jsonDecode(bodyText);
+          if (data is Map<String, dynamic>) {
+            final content = data['content'] as String? ?? '';
+            return extractJsonLd(content);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Unauthenticated Blogger Feeds JSON
+    final url = '${EnvConfig.bloggerFeedsBaseUrl}/$blogId/posts/default/$postId?alt=json';
     try {
       final bodyText = await _fetchUrlText(url);
       if (bodyText == null || bodyText.isEmpty) return null;
@@ -83,9 +106,7 @@ class BloggerDataService {
           return extractJsonLd(content);
         }
       }
-    } catch (e) {
-      // Ignore network / parse error for schema fetching
-    }
+    } catch (_) {}
     return null;
   }
 
@@ -94,13 +115,18 @@ class BloggerDataService {
   Future<Map<String, dynamic>> resolveAndLoadSchema(
     Map<String, dynamic> schema, {
     required String base,
+    String? idToken,
   }) async {
     final Map<String, dynamic> resolved = jsonDecode(jsonEncode(schema));
-    await _traverseAndResolve(resolved, base);
+    await _traverseAndResolve(resolved, base, idToken: idToken);
     return resolved;
   }
 
-  Future<void> _traverseAndResolve(dynamic node, String base) async {
+  Future<void> _traverseAndResolve(
+    dynamic node,
+    String base, {
+    String? idToken,
+  }) async {
     if (node is Map<String, dynamic>) {
       final idValue = node['@id'] ?? node['id'];
 
@@ -113,10 +139,19 @@ class BloggerDataService {
         Map<String, dynamic>? fetchedSchema;
 
         if (blogId != null && postId != null) {
-          fetchedSchema = await fetchPostSchema(blogId: blogId, postId: postId);
+          fetchedSchema = await fetchPostSchema(
+            blogId: blogId,
+            postId: postId,
+            idToken: idToken,
+          );
         } else if (fullUrl != null) {
           try {
-            final bodyText = await _fetchUrlText(fullUrl);
+            final bodyText = await _fetchUrlText(
+              fullUrl,
+              headers: idToken != null && idToken.isNotEmpty
+                  ? {'Authorization': 'Bearer $idToken'}
+                  : null,
+            );
             if (bodyText != null) {
               fetchedSchema = extractJsonLd(bodyText);
             }
@@ -126,7 +161,11 @@ class BloggerDataService {
         if (fetchedSchema != null) {
           final nestedBase = (blogId != null && postId != null) ? '$blogId/$postId' : base;
 
-          fetchedSchema = await resolveAndLoadSchema(fetchedSchema, base: nestedBase);
+          fetchedSchema = await resolveAndLoadSchema(
+            fetchedSchema,
+            base: nestedBase,
+            idToken: idToken,
+          );
 
           final merged = SchemaOverride.deepMerge(fetchedSchema, Map<String, dynamic>.from(node));
 
@@ -139,25 +178,28 @@ class BloggerDataService {
       for (final key in List<String>.from(node.keys)) {
         final val = node[key];
         if (val is Map<String, dynamic> || val is List) {
-          await _traverseAndResolve(val, base);
+          await _traverseAndResolve(val, base, idToken: idToken);
         }
       }
     } else if (node is List) {
       for (int i = 0; i < node.length; i++) {
         final item = node[i];
         if (item is Map<String, dynamic> || item is List) {
-          await _traverseAndResolve(item, base);
+          await _traverseAndResolve(item, base, idToken: idToken);
         }
       }
     }
   }
 
-  Future<String?> _fetchUrlText(String url) async {
+  Future<String?> _fetchUrlText(String url, {Map<String, String>? headers}) async {
     if (customFetcher != null) {
-      return await customFetcher!(url);
+      return await customFetcher!(url, headers: headers);
     }
     if (dio != null) {
-      final res = await dio!.get(url);
+      final res = await dio!.get(
+        url,
+        options: headers != null ? Options(headers: headers) : null,
+      );
       if (res.statusCode == 200) {
         return res.data is String ? res.data : jsonEncode(res.data);
       }

@@ -80,9 +80,56 @@ void main() {
       expect(schema!['name'], 'Raw Shirt');
     });
 
+    test('fetchPostSchema uses v3 API when idToken is provided', () async {
+      String? requestedUrl;
+      Map<String, String>? requestedHeaders;
+
+      final serviceWithMock = BloggerDataService(
+        customFetcher: (url, {headers}) async {
+          requestedUrl = url;
+          requestedHeaders = headers;
+          if (url.contains('googleapis.com/blogger/v3')) {
+            return '{"content": "<script type=\\"application/ld+json\\">{\\"@type\\": \\"Product\\", \\"name\\": \\"Auth Product\\"}</script>"}';
+          }
+          return null;
+        },
+      );
+
+      final schema = await serviceWithMock.fetchPostSchema(
+        blogId: '123',
+        postId: '456',
+        idToken: 'test-token-123',
+      );
+
+      expect(requestedUrl, 'https://www.googleapis.com/blogger/v3/blogs/123/posts/456');
+      expect(requestedHeaders?['Authorization'], 'Bearer test-token-123');
+      expect(schema, isNotNull);
+      expect(schema!['name'], 'Auth Product');
+    });
+
+    test('fetchPostSchema uses Feeds API when idToken is omitted', () async {
+      String? requestedUrl;
+
+      final serviceWithMock = BloggerDataService(
+        customFetcher: (url, {headers}) async {
+          requestedUrl = url;
+          return '{"entry": {"content": {"\$t": "{\\"@type\\": \\"Product\\", \\"name\\": \\"Feed Product\\"}"}}}';
+        },
+      );
+
+      final schema = await serviceWithMock.fetchPostSchema(
+        blogId: '123',
+        postId: '456',
+      );
+
+      expect(requestedUrl, 'https://www.blogger.com/feeds/123/posts/default/456?alt=json');
+      expect(schema, isNotNull);
+      expect(schema!['name'], 'Feed Product');
+    });
+
     test('resolveAndLoadSchema resolves and deep merges @id reference', () async {
       final mockDataService = BloggerDataService(
-        customFetcher: (url) async {
+        customFetcher: (url, {headers}) async {
           if (url.contains('555')) {
             return '''
               {
