@@ -1,39 +1,31 @@
-import 'dart:async';
+import '../../../sm.dart';
 import '../../domain/models/cart_item.dart';
 import '../../domain/repositories/cart_repository.dart';
 
 class LocalCartRepository implements ICartRepository {
-  final List<CartItem> _items = [];
-  final StreamController<List<CartItem>> _controller = StreamController<List<CartItem>>.broadcast();
-
-  LocalCartRepository() {
-    _controller.add(List.unmodifiable(_items));
-  }
-
-  void _notify() {
-    _controller.add(List.unmodifiable(_items));
-  }
+  final Signal<List<CartItem>> _cartSignal = signal<List<CartItem>>([]);
 
   @override
-  Stream<List<CartItem>> watchCart() => _controller.stream;
+  ReadonlySignal<List<CartItem>> get cartSignal => _cartSignal;
 
   @override
-  Future<List<CartItem>> getCartItems() async => List.unmodifiable(_items);
+  List<CartItem> get cartItems => List.unmodifiable(_cartSignal.value);
 
   @override
   Future<void> addToCart(CartItem item) async {
-    final index = _items.indexWhere((i) =>
+    final items = List<CartItem>.from(_cartSignal.value);
+    final index = items.indexWhere((i) =>
         i.postId == item.postId &&
         _mapEquals(i.selectedVariantOptions, item.selectedVariantOptions) &&
         _selectedAddOnsEquals(i.selectedAddOns, item.selectedAddOns));
 
     if (index != -1) {
-      final existing = _items[index];
-      _items[index] = existing.copyWith(quantity: existing.quantity + item.quantity);
+      final existing = items[index];
+      items[index] = existing.copyWith(quantity: existing.quantity + item.quantity);
     } else {
-      _items.add(item);
+      items.add(item);
     }
-    _notify();
+    _cartSignal.value = items;
   }
 
   @override
@@ -42,23 +34,24 @@ class LocalCartRepository implements ICartRepository {
       await removeFromCart(cartItemId);
       return;
     }
-    final index = _items.indexWhere((i) => i.id == cartItemId);
+    final items = List<CartItem>.from(_cartSignal.value);
+    final index = items.indexWhere((i) => i.id == cartItemId);
     if (index != -1) {
-      _items[index] = _items[index].copyWith(quantity: quantity);
-      _notify();
+      items[index] = items[index].copyWith(quantity: quantity);
+      _cartSignal.value = items;
     }
   }
 
   @override
   Future<void> removeFromCart(String cartItemId) async {
-    _items.removeWhere((i) => i.id == cartItemId);
-    _notify();
+    final items = List<CartItem>.from(_cartSignal.value);
+    items.removeWhere((i) => i.id == cartItemId);
+    _cartSignal.value = items;
   }
 
   @override
   Future<void> clearCart() async {
-    _items.clear();
-    _notify();
+    _cartSignal.value = [];
   }
 
   bool _mapEquals(Map<String, String> a, Map<String, String> b) {

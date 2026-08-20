@@ -1,41 +1,34 @@
-import 'dart:async';
+import '../../../sm.dart';
 import '../../domain/models/wishlist_item.dart';
 import '../../domain/repositories/wishlist_repository.dart';
 
 class LocalWishlistRepository implements IWishlistRepository {
-  final List<WishlistItem> _items = [];
-  final StreamController<List<WishlistItem>> _controller = StreamController<List<WishlistItem>>.broadcast();
-
-  LocalWishlistRepository() {
-    _controller.add(List.unmodifiable(_items));
-  }
-
-  void _notify() {
-    _controller.add(List.unmodifiable(_items));
-  }
+  final Signal<List<WishlistItem>> _wishlistSignal = signal<List<WishlistItem>>([]);
 
   @override
-  Stream<List<WishlistItem>> watchWishlist() => _controller.stream;
+  ReadonlySignal<List<WishlistItem>> get wishlistSignal => _wishlistSignal;
 
   @override
-  Future<List<WishlistItem>> getWishlistItems() async => List.unmodifiable(_items);
+  List<WishlistItem> get wishlistItems => List.unmodifiable(_wishlistSignal.value);
 
   @override
   Future<void> addToWishlist(WishlistItem item) async {
-    if (!_items.any((i) => i.postId == item.postId)) {
-      _items.add(item);
-      _notify();
+    final items = List<WishlistItem>.from(_wishlistSignal.value);
+    if (!items.any((i) => i.postId == item.postId)) {
+      items.add(item);
+      _wishlistSignal.value = items;
     }
   }
 
   @override
   Future<void> removeFromWishlist(String wishlistItemId) async {
-    _items.removeWhere((i) => i.id == wishlistItemId || i.postId == wishlistItemId);
-    _notify();
+    final items = List<WishlistItem>.from(_wishlistSignal.value);
+    items.removeWhere((i) => i.id == wishlistItemId || i.postId == wishlistItemId);
+    _wishlistSignal.value = items;
   }
 
   @override
   Future<bool> isInWishlist(String postId) async {
-    return _items.any((i) => i.postId == postId);
+    return _wishlistSignal.value.any((i) => i.postId == postId);
   }
 }

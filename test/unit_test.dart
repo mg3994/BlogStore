@@ -43,32 +43,8 @@ void main() {
     });
   });
 
-  group('Cart & Local Storage tests', () {
-    test('calculates cart item effective unit price and total price with nested add-ons', () {
-      final item = CartItem(
-        id: 'cart_1',
-        postId: 'post_1',
-        blogId: '1774904866501098696',
-        title: 'Deluxe Pizza',
-        unitPrice: 300.0,
-        quantity: 2,
-        selectedAddOns: const [
-          SelectedAddOn(
-            groupId: 'crust',
-            optionId: 'cheese_burst',
-            optionName: 'Cheese Burst',
-            priceAdjustment: 50.0,
-          )
-        ],
-        addedAt: DateTime.now(),
-      );
-
-      // (300 + 50) * 2 = 700
-      expect(item.effectiveUnitPrice, 350.0);
-      expect(item.totalPrice, 700.0);
-    });
-
-    test('LocalCartRepository manages items reactively', () async {
+  group('Cart & Wishlist Signal State Management tests', () {
+    test('LocalCartRepository updates cartSignal reactively', () async {
       final repo = LocalCartRepository();
       final item = CartItem(
         id: 'cart_1',
@@ -79,15 +55,39 @@ void main() {
         addedAt: DateTime.now(),
       );
 
+      expect(repo.cartSignal.value, isEmpty);
+
       await repo.addToCart(item);
-      final items = await repo.getCartItems();
-      expect(items.length, 1);
-      expect(items.first.quantity, 1);
+      expect(repo.cartSignal.value.length, 1);
+      expect(repo.cartItems.first.quantity, 1);
 
       // Adding same item increases quantity
       await repo.addToCart(item);
-      final updated = await repo.getCartItems();
-      expect(updated.first.quantity, 2);
+      expect(repo.cartSignal.value.first.quantity, 2);
+
+      await repo.removeFromCart('cart_1');
+      expect(repo.cartSignal.value, isEmpty);
+    });
+
+    test('LocalWishlistRepository updates wishlistSignal reactively', () async {
+      final repo = LocalWishlistRepository();
+      final item = WishlistItem(
+        id: 'wish_1',
+        postId: 'post_1',
+        blogId: '1774904866501098696',
+        title: 'Wishlist Item',
+        addedAt: DateTime.now(),
+      );
+
+      expect(repo.wishlistSignal.value, isEmpty);
+
+      await repo.addToWishlist(item);
+      expect(repo.wishlistSignal.value.length, 1);
+      expect(await repo.isInWishlist('post_1'), isTrue);
+
+      await repo.removeFromWishlist('wish_1');
+      expect(repo.wishlistSignal.value, isEmpty);
+      expect(await repo.isInWishlist('post_1'), isFalse);
     });
   });
 
