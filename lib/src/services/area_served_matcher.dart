@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../domain/models/location_model.dart';
 
 class AreaServedMatcher {
@@ -55,7 +56,31 @@ class AreaServedMatcher {
     final userCountry = userLocation.country?.trim() ?? '';
     final userPostalCode = userLocation.postalCode?.trim() ?? '';
 
-    // 1. Country level matching
+    // 1. Check GeoCircle
+    if (type == 'geocircle') {
+      if (userLocation.latitude == null || userLocation.longitude == null) {
+        return false;
+      }
+      final midpoint = area['geoMidpoint'] as Map<String, dynamic>?;
+      if (midpoint == null) return false;
+
+      final mLat = (midpoint['latitude'] as num?)?.toDouble();
+      final mLon = (midpoint['longitude'] as num?)?.toDouble();
+      final radius = (area['geoRadius'] as num?)?.toDouble() ?? 0.0; // Radius in meters
+
+      if (mLat != null && mLon != null) {
+        final dist = calculateDistanceMeters(
+          userLocation.latitude!,
+          userLocation.longitude!,
+          mLat,
+          mLon,
+        );
+        return dist <= radius;
+      }
+      return false;
+    }
+
+    // 2. Country level matching
     if (type == 'country' || _isCountryName(name) || addressCountry.isNotEmpty) {
       final targetCountry = name.isNotEmpty ? name : addressCountry;
       if (userCountry.isNotEmpty && _equalsIgnoreCases(targetCountry, userCountry)) {
@@ -63,14 +88,14 @@ class AreaServedMatcher {
       }
     }
 
-    // 2. City level matching
+    // 3. City level matching
     if (type == 'city') {
       if (userCity.isNotEmpty && _equalsIgnoreCases(name, userCity)) {
         return true;
       }
     }
 
-    // 3. State level matching
+    // 4. State level matching
     if (type == 'state' || type == 'administrativearea') {
       if (userState.isNotEmpty && _equalsIgnoreCases(name, userState)) {
         return true;
@@ -80,14 +105,14 @@ class AreaServedMatcher {
       }
     }
 
-    // 4. Postal Code matching
+    // 5. Postal Code matching
     if (postalCode.isNotEmpty && userPostalCode.isNotEmpty) {
       if (_equalsIgnoreCases(postalCode, userPostalCode)) {
         return true;
       }
     }
 
-    // 5. Fallback generic name matching against user's city, state, or country
+    // 6. Fallback generic name matching against user's city, state, or country
     if (name.isNotEmpty) {
       if (userCity.isNotEmpty && _equalsIgnoreCases(name, userCity)) return true;
       if (userState.isNotEmpty && _equalsIgnoreCases(name, userState)) return true;
@@ -95,6 +120,17 @@ class AreaServedMatcher {
     }
 
     return false;
+  }
+
+  /// Calculates haversine distance in meters between two lat/lon coordinates.
+  static double calculateDistanceMeters(double lat1, double lon1, double lat2, double lon2) {
+    const double R = 6371000; // Earth radius in meters
+    final dLat = (lat2 - lat1) * (pi / 180);
+    final dLon = (lon2 - lon1) * (pi / 180);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) * cos(lat2 * (pi / 180)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
   }
 
   static bool _isCountryName(String name) {

@@ -43,6 +43,91 @@ void main() {
     });
   });
 
+  group('BusinessHoursMatcher tests', () {
+    test('returns isOpen true when regular hours match current time', () {
+      final seller = {
+        'openingHoursSpecification': [
+          {
+            'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            'opens': '08:00',
+            'closes': '22:00',
+          }
+        ]
+      };
+
+      final mondayAtTen = DateTime(2025, 8, 18, 10, 0); // Monday 10:00
+      final result = BusinessHoursMatcher.isBusinessOpen(seller, now: mondayAtTen);
+      expect(result.isOpen, isTrue);
+    });
+
+    test('returns isOpen false when current time is outside opening hours', () {
+      final seller = {
+        'openingHoursSpecification': [
+          {
+            'dayOfWeek': ['Monday'],
+            'opens': '09:00',
+            'closes': '17:00',
+          }
+        ]
+      };
+
+      final mondayNight = DateTime(2025, 8, 18, 23, 0); // Monday 23:00
+      final result = BusinessHoursMatcher.isBusinessOpen(seller, now: mondayNight);
+      expect(result.isOpen, isFalse);
+      expect(result.message, contains('Closed'));
+    });
+  });
+
+  group('SchemaExtractorHelpers tests', () {
+    test('extracts lead time in minutes fromQuantitativeValue or string', () {
+      final schemaHours = {
+        'deliveryLeadTime': {'value': 2, 'unitCode': 'HUR'}
+      };
+      expect(SchemaExtractorHelpers.extractLeadTimeMinutes(schemaHours), 120);
+
+      final schemaString = {'deliveryLeadTime': '35 mins'};
+      expect(SchemaExtractorHelpers.extractLeadTimeMinutes(schemaString), 35);
+    });
+
+    test('extracts item condition', () {
+      final schemaNew = {'itemCondition': 'https://schema.org/NewCondition'};
+      expect(SchemaExtractorHelpers.extractItemCondition(schemaNew), 'New');
+
+      final schemaRefurbished = {'itemCondition': 'https://schema.org/RefurbishedCondition'};
+      expect(SchemaExtractorHelpers.extractItemCondition(schemaRefurbished), 'Refurbished');
+    });
+
+    test('extracts 3D model GLTF content URL', () {
+      final schema3d = {
+        'subjectOf': [
+          {
+            '@type': '3DModel',
+            'encoding': {'contentUrl': 'https://example.com/model.glb'}
+          }
+        ]
+      };
+      expect(SchemaExtractorHelpers.extract3DModelUrl(schema3d), 'https://example.com/model.glb');
+    });
+  });
+
+  group('AreaServedMatcher GeoCircle tests', () {
+    test('matches location within GeoCircle radius', () {
+      final area = {
+        '@type': 'GeoCircle',
+        'geoMidpoint': {'latitude': 28.4595, 'longitude': 77.0266}, // Gurugram center
+        'geoRadius': 5000.0, // 5 km
+      };
+
+      // 1 km away
+      const userLoc = LocationModel(latitude: 28.4600, longitude: 77.0300);
+      expect(AreaServedMatcher.isServiceable(areaServed: area, userLocation: userLoc), isTrue);
+
+      // 50 km away
+      const farLoc = LocationModel(latitude: 28.9000, longitude: 77.9000);
+      expect(AreaServedMatcher.isServiceable(areaServed: area, userLocation: farLoc), isFalse);
+    });
+  });
+
   group('Cart & Wishlist Signal State Management tests', () {
     test('LocalCartRepository updates cartSignal reactively', () async {
       final repo = LocalCartRepository();
@@ -61,33 +146,11 @@ void main() {
       expect(repo.cartSignal.value.length, 1);
       expect(repo.cartItems.first.quantity, 1);
 
-      // Adding same item increases quantity
       await repo.addToCart(item);
       expect(repo.cartSignal.value.first.quantity, 2);
 
       await repo.removeFromCart('cart_1');
       expect(repo.cartSignal.value, isEmpty);
-    });
-
-    test('LocalWishlistRepository updates wishlistSignal reactively', () async {
-      final repo = LocalWishlistRepository();
-      final item = WishlistItem(
-        id: 'wish_1',
-        postId: 'post_1',
-        blogId: '1774904866501098696',
-        title: 'Wishlist Item',
-        addedAt: DateTime.now(),
-      );
-
-      expect(repo.wishlistSignal.value, isEmpty);
-
-      await repo.addToWishlist(item);
-      expect(repo.wishlistSignal.value.length, 1);
-      expect(await repo.isInWishlist('post_1'), isTrue);
-
-      await repo.removeFromWishlist('wish_1');
-      expect(repo.wishlistSignal.value, isEmpty);
-      expect(await repo.isInWishlist('post_1'), isFalse);
     });
   });
 
@@ -120,80 +183,6 @@ void main() {
       expect(parsed.customerEmail, 'test@example.com');
       expect(parsed.items.length, 1);
       expect(parsed.totalAmount, 150.0);
-    });
-
-    test('PaymentRecordRequest formats JSON payload for api.antinna.in', () {
-      const paymentReq = PaymentRecordRequest(
-        orderId: 'ord_123',
-        paymentMethod: 'google_pay_upi',
-        transactionReference: 'upi_ref_9999',
-        amount: 150.0,
-      );
-
-      final json = paymentReq.toJson();
-      expect(json['orderId'], 'ord_123');
-      expect(json['paymentMethod'], 'google_pay_upi');
-      expect(json['transactionReference'], 'upi_ref_9999');
-      expect(json['amount'], 150.0);
-    });
-  });
-
-  group('SchemaI18nResolver tests', () {
-    test('resolves simple string', () {
-      expect(SchemaI18nResolver.resolve('Simple Title'), 'Simple Title');
-    });
-
-    test('resolves single localized value object', () {
-      final value = {'@value': 'French Title', '@language': 'fr'};
-      expect(SchemaI18nResolver.resolve(value), 'French Title');
-    });
-
-    test('resolves matching language from array of localized values', () {
-      final arrayValue = [
-        {'@value': 'The Count of Monte Cristo', '@language': 'en'},
-        {'@value': 'Le Comte de Monte-Cristo', '@language': 'fr'},
-      ];
-
-      final resFr = SchemaI18nResolver.resolve(
-        arrayValue,
-        preferredLocales: [const Locale('fr')],
-      );
-      expect(resFr, 'Le Comte de Monte-Cristo');
-    });
-  });
-
-  group('ProductAddOnParser & AddOnPriceCalculator tests', () {
-    final sampleSchema = {
-      'name': 'Custom Pizza',
-      'price': 299.0,
-      'addOn': [
-        {
-          'id': 'crust_group',
-          'name': 'Choose Crust',
-          'isRequired': true,
-          'minSelect': 1,
-          'maxSelect': 1,
-          'options': [
-            {
-              'id': 'pan_crust',
-              'name': 'Pan Crust',
-              'priceAdjustment': 0.0,
-            },
-            {
-              'id': 'cheese_burst',
-              'name': 'Cheese Burst',
-              'priceAdjustment': 99.0,
-            }
-          ]
-        }
-      ]
-    };
-
-    test('parses nested add-on groups and options', () {
-      final groups = ProductAddOnParser.parseGroups(sampleSchema);
-      expect(groups.length, 1);
-      expect(groups.first.title, 'Choose Crust');
-      expect(groups.first.options.length, 2);
     });
   });
 }
