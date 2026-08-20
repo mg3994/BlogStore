@@ -2,7 +2,17 @@ import 'src/config/env_config.dart';
 import 'src/domain/models/resolved_id.dart';
 import 'src/domain/models/location_model.dart';
 import 'src/domain/models/product_add_on.dart';
+import 'src/domain/models/cart_item.dart';
+import 'src/domain/models/wishlist_item.dart';
+import 'src/domain/models/order_model.dart';
+import 'src/domain/models/payment_record.dart';
+
 import 'src/domain/repositories/blogger_repository.dart';
+import 'src/domain/repositories/cart_repository.dart';
+import 'src/domain/repositories/wishlist_repository.dart';
+import 'src/domain/repositories/order_repository.dart';
+import 'src/domain/repositories/payment_repository.dart';
+
 import 'src/services/schema_override.dart';
 import 'src/services/blogger_data_service.dart';
 import 'src/services/location_service.dart';
@@ -11,8 +21,13 @@ import 'src/services/power_search_parser.dart';
 import 'src/services/schema_i18n_resolver.dart';
 import 'src/services/product_add_on_parser.dart';
 import 'src/services/add_on_price_calculator.dart';
+
 import 'src/data/blogger_remote_data_source.dart';
 import 'src/data/blogger_repository_impl.dart';
+import 'src/data/local/local_cart_repository.dart';
+import 'src/data/local/local_wishlist_repository.dart';
+import 'src/data/remote/antinna_order_remote_data_source.dart';
+
 import 'src/components/location_selector_banner.dart';
 import 'src/components/power_search_bar.dart';
 import 'src/components/product_card.dart';
@@ -23,7 +38,17 @@ export 'src/config/env_config.dart';
 export 'src/domain/models/resolved_id.dart';
 export 'src/domain/models/location_model.dart';
 export 'src/domain/models/product_add_on.dart';
+export 'src/domain/models/cart_item.dart';
+export 'src/domain/models/wishlist_item.dart';
+export 'src/domain/models/order_model.dart';
+export 'src/domain/models/payment_record.dart';
+
 export 'src/domain/repositories/blogger_repository.dart';
+export 'src/domain/repositories/cart_repository.dart';
+export 'src/domain/repositories/wishlist_repository.dart';
+export 'src/domain/repositories/order_repository.dart';
+export 'src/domain/repositories/payment_repository.dart';
+
 export 'src/services/schema_override.dart';
 export 'src/services/blogger_data_service.dart';
 export 'src/services/location_service.dart';
@@ -32,8 +57,13 @@ export 'src/services/power_search_parser.dart';
 export 'src/services/schema_i18n_resolver.dart';
 export 'src/services/product_add_on_parser.dart';
 export 'src/services/add_on_price_calculator.dart';
+
 export 'src/data/blogger_remote_data_source.dart';
 export 'src/data/blogger_repository_impl.dart';
+export 'src/data/local/local_cart_repository.dart';
+export 'src/data/local/local_wishlist_repository.dart';
+export 'src/data/remote/antinna_order_remote_data_source.dart';
+
 export 'src/components/location_selector_banner.dart';
 export 'src/components/power_search_bar.dart';
 export 'src/components/product_card.dart';
