@@ -6,6 +6,7 @@ import 'src/domain/models/cart_item.dart';
 import 'src/domain/models/wishlist_item.dart';
 import 'src/domain/models/order_model.dart';
 import 'src/domain/models/payment_record.dart';
+import 'src/domain/models/parcel_delivery.dart';
 
 import 'src/domain/repositories/blogger_repository.dart';
 import 'src/domain/repositories/cart_repository.dart';
@@ -46,6 +47,7 @@ export 'src/domain/models/cart_item.dart';
 export 'src/domain/models/wishlist_item.dart';
 export 'src/domain/models/order_model.dart';
 export 'src/domain/models/payment_record.dart';
+export 'src/domain/models/parcel_delivery.dart';
 
 export 'src/domain/repositories/blogger_repository.dart';
 export 'src/domain/repositories/cart_repository.dart';
