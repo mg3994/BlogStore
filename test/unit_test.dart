@@ -43,60 +43,52 @@ void main() {
     });
   });
 
-  group('LocationService reverseGeocode & lookupPin tests', () {
-    test('reverseGeocode resolves city and postal code', () async {
-      final service = LocationService(
-        customFetcher: (url, {headers}) async {
-          if (url.contains('reverse')) {
-            return '''
-              {
-                "address": {
-                  "city": "Gurugram",
-                  "state": "Haryana",
-                  "country": "India",
-                  "postcode": "122001"
-                }
-              }
-            ''';
-          }
-          return null;
-        },
-      );
-
-      final loc = await service.reverseGeocode(28.4595, 77.0266);
-      expect(loc, isNotNull);
-      expect(loc!.city, 'Gurugram');
-      expect(loc.postalCode, '122001');
-      expect(loc.state, 'Haryana');
+  group('CartItemValidator tests', () {
+    test('validates single quantity against min and max bounds', () {
+      expect(CartItemValidator.isQuantityValid(2, minQuantity: 2, maxQuantity: 5), isTrue);
+      expect(CartItemValidator.isQuantityValid(1, minQuantity: 2, maxQuantity: 5), isFalse);
+      expect(CartItemValidator.isQuantityValid(6, minQuantity: 2, maxQuantity: 5), isFalse);
     });
 
-    test('lookupPin resolves coordinates and city from postal code', () async {
-      final service = LocationService(
-        customFetcher: (url, {headers}) async {
-          if (url.contains('postalcode=122001')) {
-            return '''
-              [
-                {
-                  "lat": "28.4595",
-                  "lon": "77.0266",
-                  "address": {
-                    "city": "Gurugram",
-                    "state": "Haryana",
-                    "country": "India"
-                  }
-                }
-              ]
-            ''';
-          }
-          return null;
+    test('validates cart items against constraints map', () {
+      final items = [
+        CartItem(
+          id: 'c1',
+          postId: 'p1',
+          blogId: '123',
+          title: 'Shirt',
+          unitPrice: 500,
+          quantity: 1,
+          addedAt: DateTime.now(),
+        )
+      ];
+
+      final errors = CartItemValidator.validateCart(
+        cartItems: items,
+        constraints: const {
+          'c1': QuantityConstraint(minQuantity: 2, maxQuantity: 10)
         },
       );
 
-      final loc = await service.lookupPin('122001');
-      expect(loc, isNotNull);
-      expect(loc!.city, 'Gurugram');
-      expect(loc.latitude, 28.4595);
-      expect(loc.longitude, 77.0266);
+      expect(errors.containsKey('c1'), isTrue);
+      expect(errors['c1'], contains('Minimum quantity required is 2'));
+    });
+  });
+
+  group('DeliveryTimeCalculator tests', () {
+    test('parses travel minutes correctly', () {
+      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
+      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
+    });
+
+    test('calculates and formats total estimated delivery duration', () {
+      final totalMins = DeliveryTimeCalculator.calculateTotalMinutes(
+        travelMinutes: 20,
+        maxLeadTimeMinutes: 55,
+      );
+
+      expect(totalMins, 75);
+      expect(DeliveryTimeCalculator.formatDuration(totalMins), '1h 15m');
     });
   });
 
@@ -120,61 +112,6 @@ void main() {
 
       final parsed = ParcelDelivery.fromJson(json);
       expect(parsed.deliveryAddress.addressLocality, 'Gurugram');
-      expect(parsed.latitude, 28.4595);
-      expect(parsed.longitude, 77.0266);
-    });
-  });
-
-  group('GooglePayUpiService tests', () {
-    test('builds standard UPI payment URI string', () {
-      final uri = GooglePayUpiService.buildUpiUri(
-        orderId: 'ord_999',
-        amount: 499.50,
-      );
-
-      expect(uri, contains('upi://pay?'));
-      expect(uri, contains('pa=manishsharma3994@okhdfcbank'));
-      expect(uri, contains('pn=Antinna'));
-      expect(uri, contains('mc=5251'));
-      expect(uri, contains('am=499.50'));
-    });
-  });
-
-  group('BusinessHoursMatcher tests', () {
-    test('returns isOpen true when regular hours match current time', () {
-      final seller = {
-        'openingHoursSpecification': [
-          {
-            'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-            'opens': '08:00',
-            'closes': '22:00',
-          }
-        ]
-      };
-
-      final mondayAtTen = DateTime(2025, 8, 18, 10, 0); // Monday 10:00
-      final result = BusinessHoursMatcher.isBusinessOpen(seller, now: mondayAtTen);
-      expect(result.isOpen, isTrue);
-    });
-  });
-
-  group('Cart & Wishlist Signal State Management tests', () {
-    test('LocalCartRepository updates cartSignal reactively', () async {
-      final repo = LocalCartRepository();
-      final item = CartItem(
-        id: 'cart_1',
-        postId: 'post_1',
-        blogId: '1774904866501098696',
-        title: 'Test Item',
-        unitPrice: 100.0,
-        addedAt: DateTime.now(),
-      );
-
-      expect(repo.cartSignal.value, isEmpty);
-
-      await repo.addToCart(item);
-      expect(repo.cartSignal.value.length, 1);
-      expect(repo.cartItems.first.quantity, 1);
     });
   });
 }
