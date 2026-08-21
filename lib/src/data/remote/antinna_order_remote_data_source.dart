@@ -4,18 +4,32 @@ import '../../domain/models/payment_record.dart';
 
 class AntinnaOrderRemoteDataSource {
   final Dio dio;
+  final String? clientId;
+
   static const String baseUrl = 'https://api.antinna.in';
 
-  AntinnaOrderRemoteDataSource({required this.dio});
+  AntinnaOrderRemoteDataSource({
+    required this.dio,
+    this.clientId,
+  });
+
+  Map<String, String> _buildHeaders({String? idToken}) {
+    final Map<String, String> headers = {'Content-Type': 'application/json'};
+    if (clientId != null && clientId!.isNotEmpty) {
+      headers['X-Antinna-Client-Id'] = clientId!;
+    }
+    if (idToken != null && idToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $idToken';
+    }
+    return headers;
+  }
 
   Future<OrderModel> createOrder(OrderModel order, {String? idToken}) async {
     final url = '$baseUrl/orders';
     final res = await dio.post(
       url,
       data: order.toJson(),
-      options: idToken != null && idToken.isNotEmpty
-          ? Options(headers: {'Authorization': 'Bearer $idToken'})
-          : null,
+      options: Options(headers: _buildHeaders(idToken: idToken)),
     );
 
     if (res.data is Map<String, dynamic>) {
@@ -29,9 +43,7 @@ class AntinnaOrderRemoteDataSource {
     try {
       final res = await dio.get(
         url,
-        options: idToken != null && idToken.isNotEmpty
-            ? Options(headers: {'Authorization': 'Bearer $idToken'})
-            : null,
+        options: Options(headers: _buildHeaders(idToken: idToken)),
       );
 
       if (res.data is Map<String, dynamic>) {
@@ -39,6 +51,43 @@ class AntinnaOrderRemoteDataSource {
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<bool> isOrderPaid(String orderId, {String? idToken}) async {
+    final url = '$baseUrl/orders/$orderId/status';
+    try {
+      final res = await dio.get(
+        url,
+        options: Options(headers: _buildHeaders(idToken: idToken)),
+      );
+
+      if (res.data is Map<String, dynamic>) {
+        final status = res.data['status']?.toString().toLowerCase();
+        return status == 'paid' || status == 'success' || res.data['isPaid'] == true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<List<Map<String, dynamic>>> listNotifications({
+    int page = 1,
+    int pageSize = 20,
+    String? idToken,
+  }) async {
+    final url = '$baseUrl/notifications?page=$page&pageSize=$pageSize';
+    try {
+      final res = await dio.get(
+        url,
+        options: Options(headers: _buildHeaders(idToken: idToken)),
+      );
+
+      if (res.data is List) {
+        return (res.data as List).whereType<Map<String, dynamic>>().toList();
+      } else if (res.data is Map<String, dynamic> && res.data['notifications'] is List) {
+        return (res.data['notifications'] as List).whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (_) {}
+    return const [];
   }
 
   Future<PaymentRecordResponse> recordPayment(
@@ -49,9 +98,7 @@ class AntinnaOrderRemoteDataSource {
     final res = await dio.post(
       url,
       data: payment.toJson(),
-      options: idToken != null && idToken.isNotEmpty
-          ? Options(headers: {'Authorization': 'Bearer $idToken'})
-          : null,
+      options: Options(headers: _buildHeaders(idToken: idToken)),
     );
 
     if (res.data is Map<String, dynamic>) {

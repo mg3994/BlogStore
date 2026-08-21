@@ -43,6 +43,32 @@ void main() {
     });
   });
 
+  group('GooglePayUpiService tests', () {
+    test('builds standard UPI payment URI string', () {
+      final uri = GooglePayUpiService.buildUpiUri(
+        orderId: 'ord_999',
+        amount: 499.50,
+      );
+
+      expect(uri, contains('upi://pay?'));
+      expect(uri, contains('pa=manishsharma3994@okhdfcbank'));
+      expect(uri, contains('pn=Antinna'));
+      expect(uri, contains('mc=5251'));
+      expect(uri, contains('am=499.50'));
+    });
+
+    test('builds Google Pay payment instrument data map', () {
+      final data = GooglePayUpiService.buildPaymentInstrumentsData(
+        orderId: 'ord_999',
+        totalAmount: 499.50,
+      );
+
+      expect(data.containsKey('googlePayUPI'), isTrue);
+      expect(data.containsKey('googlePayGlobal'), isTrue);
+      expect(data['total']['value'], '499.50');
+    });
+  });
+
   group('BusinessHoursMatcher tests', () {
     test('returns isOpen true when regular hours match current time', () {
       final seller = {
