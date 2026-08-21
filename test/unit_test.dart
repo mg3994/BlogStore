@@ -43,35 +43,21 @@ void main() {
     });
   });
 
-  group('CartItemValidator tests', () {
-    test('validates single quantity against min and max bounds', () {
-      expect(CartItemValidator.isQuantityValid(2, minQuantity: 2, maxQuantity: 5), isTrue);
-      expect(CartItemValidator.isQuantityValid(1, minQuantity: 2, maxQuantity: 5), isFalse);
-      expect(CartItemValidator.isQuantityValid(6, minQuantity: 2, maxQuantity: 5), isFalse);
+  group('PhoneValidator tests', () {
+    test('sanitizes and formats E.164 phone string', () {
+      final formatted = PhoneValidator.formatE164(
+        rawPhone: '98765 43210',
+        country: CountryCodeModel.defaultCountry,
+      );
+      expect(formatted, '+919876543210');
     });
 
-    test('validates cart items against constraints map', () {
-      final items = [
-        CartItem(
-          id: 'c1',
-          postId: 'p1',
-          blogId: '123',
-          title: 'Shirt',
-          unitPrice: 500,
-          quantity: 1,
-          addedAt: DateTime.now(),
-        )
-      ];
+    test('validates phone number and OTP code', () {
+      expect(PhoneValidator.isValidPhoneNumber('9876543210'), isTrue);
+      expect(PhoneValidator.isValidPhoneNumber('123'), isFalse);
 
-      final errors = CartItemValidator.validateCart(
-        cartItems: items,
-        constraints: const {
-          'c1': QuantityConstraint(minQuantity: 2, maxQuantity: 10)
-        },
-      );
-
-      expect(errors.containsKey('c1'), isTrue);
-      expect(errors['c1'], contains('Minimum quantity required is 2'));
+      expect(PhoneValidator.isValidOtpCode('123456'), isTrue);
+      expect(PhoneValidator.isValidOtpCode('1234'), isFalse);
     });
   });
 
@@ -112,6 +98,21 @@ void main() {
 
       final parsed = ParcelDelivery.fromJson(json);
       expect(parsed.deliveryAddress.addressLocality, 'Gurugram');
+    });
+  });
+
+  group('GooglePayUpiService tests', () {
+    test('builds standard UPI payment URI string', () {
+      final uri = GooglePayUpiService.buildUpiUri(
+        orderId: 'ord_999',
+        amount: 499.50,
+      );
+
+      expect(uri, contains('upi://pay?'));
+      expect(uri, contains('pa=manishsharma3994@okhdfcbank'));
+      expect(uri, contains('pn=Antinna'));
+      expect(uri, contains('mc=5251'));
+      expect(uri, contains('am=499.50'));
     });
   });
 }
