@@ -66,6 +66,79 @@ class BloggerDataService {
     return null;
   }
 
+  /// Fetches search autocomplete suggestions based on power search query (preserving `label:` context).
+  Future<List<String>> fetchSearchSuggestions(
+    String query, {
+    String? blogId,
+    int maxResults = 10,
+  }) async {
+    if (query.trim().length < 2) return const [];
+
+    final effectiveBlogId = blogId ?? EnvConfig.defaultBlogId;
+
+    try {
+      final labelRegex = RegExp(r'label:([^|\s]+)');
+      final matches = labelRegex.allMatches(query).toList();
+
+      String labelPrefix = '';
+      if (matches.isNotEmpty) {
+        final lastMatch = matches.last;
+        labelPrefix = query.substring(0, lastMatch.end).trim() + ' ';
+        if (query.trim().endsWith('|')) {
+          labelPrefix = query.trim() + ' ';
+        }
+      }
+
+      final cleanedKeyword = query
+          .replaceAll(labelRegex, '')
+          .replaceAll('|', '')
+          .trim()
+          .toLowerCase();
+
+      final feedUrl = '${EnvConfig.bloggerFeedsBaseUrl}/$effectiveBlogId/posts/default?alt=json&max-results=50&q=${Uri.encodeComponent(cleanedKeyword)}';
+
+      final bodyText = await _fetchUrlText(feedUrl);
+      if (bodyText == null || bodyText.isEmpty) return const [];
+
+      final data = jsonDecode(bodyText);
+      final entries = (data['feed']?['entry'] as List?) ?? [];
+
+      final Set<String> suggestions = {};
+
+      for (final entry in entries) {
+        if (entry is Map<String, dynamic>) {
+          final title = entry['title']?['\$t'] as String? ?? '';
+          if (cleanedKeyword.isEmpty || title.toLowerCase().contains(cleanedKeyword)) {
+            suggestions.add('$labelPrefix$title'.trim());
+          }
+
+          final content = entry['content']?['\$t'] as String? ?? '';
+          final schema = extractJsonLd(content);
+          if (schema != null) {
+            final name = schema['name'] as String?;
+            if (name != null && (cleanedKeyword.isEmpty || name.toLowerCase().contains(cleanedKeyword))) {
+              suggestions.add('$labelPrefix$name'.trim());
+            }
+
+            final keywords = schema['keywords'];
+            if (keywords is String) {
+              for (final k in keywords.split(',')) {
+                final trimmed = k.trim();
+                if (trimmed.isNotEmpty && (cleanedKeyword.isEmpty || trimmed.toLowerCase().contains(cleanedKeyword))) {
+                  suggestions.add('$labelPrefix$trimmed'.trim());
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return suggestions.take(maxResults).toList();
+    } catch (_) {}
+
+    return const [];
+  }
+
   /// Fetches a Blogger post's JSON schema.
   /// If authenticated (`idToken` provided), requests the v3 REST API endpoint.
   /// Otherwise, requests the unauthenticated JSON feed endpoint.

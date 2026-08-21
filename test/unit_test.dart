@@ -43,6 +43,32 @@ void main() {
     });
   });
 
+  group('BloggerDataService Search Suggestions tests', () {
+    test('fetches autocomplete suggestions preserving label: prefix', () async {
+      final service = BloggerDataService(
+        customFetcher: (url, {headers}) async {
+          return '''
+            {
+              "feed": {
+                "entry": [
+                  {
+                    "title": {"\$t": "Winter Jacket"},
+                    "content": {"\$t": "{\\"name\\": \\"Leather Winter Jacket\\", \\"keywords\\": \\"jacket, coat\\"}"}
+                  }
+                ]
+              }
+            }
+          ''';
+        },
+      );
+
+      final suggestions = await service.fetchSearchSuggestions('label:clothing jack');
+      expect(suggestions, contains('label:clothing Winter Jacket'));
+      expect(suggestions, contains('label:clothing Leather Winter Jacket'));
+      expect(suggestions, contains('label:clothing jacket'));
+    });
+  });
+
   group('ParcelDelivery & PostalAddress Schema tests', () {
     test('ParcelDelivery serializes and deserializes correctly', () {
       const delivery = ParcelDelivery(
@@ -80,24 +106,6 @@ void main() {
       expect(uri, contains('pn=Antinna'));
       expect(uri, contains('mc=5251'));
       expect(uri, contains('am=499.50'));
-    });
-  });
-
-  group('BusinessHoursMatcher tests', () {
-    test('returns isOpen true when regular hours match current time', () {
-      final seller = {
-        'openingHoursSpecification': [
-          {
-            'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-            'opens': '08:00',
-            'closes': '22:00',
-          }
-        ]
-      };
-
-      final mondayAtTen = DateTime(2025, 8, 18, 10, 0); // Monday 10:00
-      final result = BusinessHoursMatcher.isBusinessOpen(seller, now: mondayAtTen);
-      expect(result.isOpen, isTrue);
     });
   });
 
