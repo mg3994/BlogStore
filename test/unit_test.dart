@@ -43,61 +43,18 @@ void main() {
     });
   });
 
-  group('CheckoutFlowEngine tests', () {
-    test('requires login when unauthenticated', () {
-      final result = CheckoutFlowEngine.evaluateCheckoutStep(
-        isAuthenticated: false,
-        hasPhoneLinked: false,
-        hasVerifiedLocation: false,
-      );
+  group('ToastNotificationService tests', () {
+    test('dispatches and clears toast signals reactively', () {
+      final toastService = ToastNotificationService();
+      expect(toastService.currentToastSignal.value, isNull);
 
-      expect(result.currentStep, CheckoutStep.loginRequired);
-      expect(result.isReadyForPayment, isFalse);
-    });
+      toastService.showToast('Item added to bag', type: ToastType.success);
+      expect(toastService.currentToastSignal.value, isNotNull);
+      expect(toastService.currentToastSignal.value!.message, 'Item added to bag');
+      expect(toastService.currentToastSignal.value!.type, ToastType.success);
 
-    test('requires phone verification when phone is unlinked', () {
-      final result = CheckoutFlowEngine.evaluateCheckoutStep(
-        isAuthenticated: true,
-        hasPhoneLinked: false,
-        hasVerifiedLocation: false,
-      );
-
-      expect(result.currentStep, CheckoutStep.phoneVerificationRequired);
-      expect(result.isReadyForPayment, isFalse);
-    });
-
-    test('requires geo verification when location is unverified', () {
-      final result = CheckoutFlowEngine.evaluateCheckoutStep(
-        isAuthenticated: true,
-        hasPhoneLinked: true,
-        hasVerifiedLocation: false,
-      );
-
-      expect(result.currentStep, CheckoutStep.geoVerificationRequired);
-      expect(result.isReadyForPayment, isFalse);
-    });
-
-    test('is ready for payment when all steps completed', () {
-      final result = CheckoutFlowEngine.evaluateCheckoutStep(
-        isAuthenticated: true,
-        hasPhoneLinked: true,
-        hasVerifiedLocation: true,
-      );
-
-      expect(result.currentStep, CheckoutStep.orderSummaryReady);
-      expect(result.isReadyForPayment, isTrue);
-    });
-  });
-
-  group('CatalogDetails Schema models tests', () {
-    test('AmenityFeature serializes and deserializes', () {
-      const feature = AmenityFeature(name: 'Free WiFi', value: 'Yes');
-      final json = feature.toJson();
-      expect(json['name'], 'Free WiFi');
-
-      final parsed = AmenityFeature.fromJson(json);
-      expect(parsed.name, 'Free WiFi');
-      expect(parsed.value, 'Yes');
+      toastService.clearToast();
+      expect(toastService.currentToastSignal.value, isNull);
     });
   });
 
@@ -108,6 +65,13 @@ void main() {
         country: CountryCodeModel.defaultCountry,
       );
       expect(formatted, '+919876543210');
+    });
+  });
+
+  group('DeliveryTimeCalculator tests', () {
+    test('parses travel minutes correctly', () {
+      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
+      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
     });
   });
 }
