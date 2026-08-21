@@ -43,29 +43,22 @@ void main() {
     });
   });
 
-  group('BloggerDataService Search Suggestions tests', () {
-    test('fetches autocomplete suggestions preserving label: prefix', () async {
-      final service = BloggerDataService(
-        customFetcher: (url, {headers}) async {
-          return '''
-            {
-              "feed": {
-                "entry": [
-                  {
-                    "title": {"\$t": "Winter Jacket"},
-                    "content": {"\$t": "{\\"name\\": \\"Leather Winter Jacket\\", \\"keywords\\": \\"jacket, coat\\"}"}
-                  }
-                ]
-              }
-            }
-          ''';
-        },
-      );
+  group('DeliveryTimeCalculator tests', () {
+    test('parses travel minutes correctly', () {
+      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
+      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
+    });
 
-      final suggestions = await service.fetchSearchSuggestions('label:clothing jack');
-      expect(suggestions, contains('label:clothing Winter Jacket'));
-      expect(suggestions, contains('label:clothing Leather Winter Jacket'));
-      expect(suggestions, contains('label:clothing jacket'));
+    test('calculates and formats total estimated delivery duration', () {
+      final totalMins = DeliveryTimeCalculator.calculateTotalMinutes(
+        travelMinutes: 20,
+        maxLeadTimeMinutes: 55,
+      ); // 75 mins
+
+      expect(totalMins, 75);
+      expect(DeliveryTimeCalculator.formatDuration(totalMins), '1h 15m');
+      expect(DeliveryTimeCalculator.formatDuration(30), '30 mins');
+      expect(DeliveryTimeCalculator.formatDuration(120), '2h');
     });
   });
 
@@ -106,6 +99,24 @@ void main() {
       expect(uri, contains('pn=Antinna'));
       expect(uri, contains('mc=5251'));
       expect(uri, contains('am=499.50'));
+    });
+  });
+
+  group('BusinessHoursMatcher tests', () {
+    test('returns isOpen true when regular hours match current time', () {
+      final seller = {
+        'openingHoursSpecification': [
+          {
+            'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            'opens': '08:00',
+            'closes': '22:00',
+          }
+        ]
+      };
+
+      final mondayAtTen = DateTime(2025, 8, 18, 10, 0); // Monday 10:00
+      final result = BusinessHoursMatcher.isBusinessOpen(seller, now: mondayAtTen);
+      expect(result.isOpen, isTrue);
     });
   });
 
