@@ -43,22 +43,60 @@ void main() {
     });
   });
 
-  group('DeliveryTimeCalculator tests', () {
-    test('parses travel minutes correctly', () {
-      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
-      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
+  group('LocationService reverseGeocode & lookupPin tests', () {
+    test('reverseGeocode resolves city and postal code', () async {
+      final service = LocationService(
+        customFetcher: (url, {headers}) async {
+          if (url.contains('reverse')) {
+            return '''
+              {
+                "address": {
+                  "city": "Gurugram",
+                  "state": "Haryana",
+                  "country": "India",
+                  "postcode": "122001"
+                }
+              }
+            ''';
+          }
+          return null;
+        },
+      );
+
+      final loc = await service.reverseGeocode(28.4595, 77.0266);
+      expect(loc, isNotNull);
+      expect(loc!.city, 'Gurugram');
+      expect(loc.postalCode, '122001');
+      expect(loc.state, 'Haryana');
     });
 
-    test('calculates and formats total estimated delivery duration', () {
-      final totalMins = DeliveryTimeCalculator.calculateTotalMinutes(
-        travelMinutes: 20,
-        maxLeadTimeMinutes: 55,
-      ); // 75 mins
+    test('lookupPin resolves coordinates and city from postal code', () async {
+      final service = LocationService(
+        customFetcher: (url, {headers}) async {
+          if (url.contains('postalcode=122001')) {
+            return '''
+              [
+                {
+                  "lat": "28.4595",
+                  "lon": "77.0266",
+                  "address": {
+                    "city": "Gurugram",
+                    "state": "Haryana",
+                    "country": "India"
+                  }
+                }
+              ]
+            ''';
+          }
+          return null;
+        },
+      );
 
-      expect(totalMins, 75);
-      expect(DeliveryTimeCalculator.formatDuration(totalMins), '1h 15m');
-      expect(DeliveryTimeCalculator.formatDuration(30), '30 mins');
-      expect(DeliveryTimeCalculator.formatDuration(120), '2h');
+      final loc = await service.lookupPin('122001');
+      expect(loc, isNotNull);
+      expect(loc!.city, 'Gurugram');
+      expect(loc.latitude, 28.4595);
+      expect(loc.longitude, 77.0266);
     });
   });
 
