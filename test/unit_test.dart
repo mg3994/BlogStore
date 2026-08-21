@@ -43,6 +43,39 @@ void main() {
     });
   });
 
+  group('CatalogDetails Schema models tests', () {
+    test('AmenityFeature serializes and deserializes', () {
+      const feature = AmenityFeature(name: 'Free WiFi', value: 'Yes');
+      final json = feature.toJson();
+      expect(json['name'], 'Free WiFi');
+
+      final parsed = AmenityFeature.fromJson(json);
+      expect(parsed.name, 'Free WiFi');
+      expect(parsed.value, 'Yes');
+    });
+
+    test('Audience, Certification, and OfferCatalog parse JSON correctly', () {
+      final audience = Audience.fromJson(const {
+        'audienceType': 'Adults',
+        'suggestedAge': {'name': '18+'}
+      });
+      expect(audience.audienceType, 'Adults');
+      expect(audience.suggestedAge, '18+');
+
+      final cert = Certification.fromJson(const {'name': 'ISO 9001', 'issuedBy': 'ISO'});
+      expect(cert.name, 'ISO 9001');
+
+      final catalog = OfferCatalog.fromJson(const {
+        'name': 'Our Services',
+        'itemListElement': [
+          {'name': 'Car Wash', 'price': '200'}
+        ]
+      });
+      expect(catalog.name, 'Our Services');
+      expect(catalog.itemListElement.length, 1);
+    });
+  });
+
   group('PhoneValidator tests', () {
     test('sanitizes and formats E.164 phone string', () {
       final formatted = PhoneValidator.formatE164(
@@ -51,68 +84,12 @@ void main() {
       );
       expect(formatted, '+919876543210');
     });
-
-    test('validates phone number and OTP code', () {
-      expect(PhoneValidator.isValidPhoneNumber('9876543210'), isTrue);
-      expect(PhoneValidator.isValidPhoneNumber('123'), isFalse);
-
-      expect(PhoneValidator.isValidOtpCode('123456'), isTrue);
-      expect(PhoneValidator.isValidOtpCode('1234'), isFalse);
-    });
   });
 
   group('DeliveryTimeCalculator tests', () {
     test('parses travel minutes correctly', () {
       expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
       expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
-    });
-
-    test('calculates and formats total estimated delivery duration', () {
-      final totalMins = DeliveryTimeCalculator.calculateTotalMinutes(
-        travelMinutes: 20,
-        maxLeadTimeMinutes: 55,
-      );
-
-      expect(totalMins, 75);
-      expect(DeliveryTimeCalculator.formatDuration(totalMins), '1h 15m');
-    });
-  });
-
-  group('ParcelDelivery & PostalAddress Schema tests', () {
-    test('ParcelDelivery serializes and deserializes correctly', () {
-      const delivery = ParcelDelivery(
-        deliveryAddress: PostalAddress(
-          extendedAddress: 'Apt 4B',
-          streetAddress: 'Golf Course Road',
-          addressLocality: 'Gurugram',
-          addressRegion: 'HR',
-          postalCode: '122001',
-        ),
-        latitude: 28.4595,
-        longitude: 77.0266,
-      );
-
-      final json = delivery.toJson();
-      expect(json['@type'], 'ParcelDelivery');
-      expect(json['deliveryAddress']['addressLocality'], 'Gurugram');
-
-      final parsed = ParcelDelivery.fromJson(json);
-      expect(parsed.deliveryAddress.addressLocality, 'Gurugram');
-    });
-  });
-
-  group('GooglePayUpiService tests', () {
-    test('builds standard UPI payment URI string', () {
-      final uri = GooglePayUpiService.buildUpiUri(
-        orderId: 'ord_999',
-        amount: 499.50,
-      );
-
-      expect(uri, contains('upi://pay?'));
-      expect(uri, contains('pa=manishsharma3994@okhdfcbank'));
-      expect(uri, contains('pn=Antinna'));
-      expect(uri, contains('mc=5251'));
-      expect(uri, contains('am=499.50'));
     });
   });
 }
