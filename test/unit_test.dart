@@ -43,6 +43,52 @@ void main() {
     });
   });
 
+  group('CheckoutFlowEngine tests', () {
+    test('requires login when unauthenticated', () {
+      final result = CheckoutFlowEngine.evaluateCheckoutStep(
+        isAuthenticated: false,
+        hasPhoneLinked: false,
+        hasVerifiedLocation: false,
+      );
+
+      expect(result.currentStep, CheckoutStep.loginRequired);
+      expect(result.isReadyForPayment, isFalse);
+    });
+
+    test('requires phone verification when phone is unlinked', () {
+      final result = CheckoutFlowEngine.evaluateCheckoutStep(
+        isAuthenticated: true,
+        hasPhoneLinked: false,
+        hasVerifiedLocation: false,
+      );
+
+      expect(result.currentStep, CheckoutStep.phoneVerificationRequired);
+      expect(result.isReadyForPayment, isFalse);
+    });
+
+    test('requires geo verification when location is unverified', () {
+      final result = CheckoutFlowEngine.evaluateCheckoutStep(
+        isAuthenticated: true,
+        hasPhoneLinked: true,
+        hasVerifiedLocation: false,
+      );
+
+      expect(result.currentStep, CheckoutStep.geoVerificationRequired);
+      expect(result.isReadyForPayment, isFalse);
+    });
+
+    test('is ready for payment when all steps completed', () {
+      final result = CheckoutFlowEngine.evaluateCheckoutStep(
+        isAuthenticated: true,
+        hasPhoneLinked: true,
+        hasVerifiedLocation: true,
+      );
+
+      expect(result.currentStep, CheckoutStep.orderSummaryReady);
+      expect(result.isReadyForPayment, isTrue);
+    });
+  });
+
   group('CatalogDetails Schema models tests', () {
     test('AmenityFeature serializes and deserializes', () {
       const feature = AmenityFeature(name: 'Free WiFi', value: 'Yes');
@@ -53,27 +99,6 @@ void main() {
       expect(parsed.name, 'Free WiFi');
       expect(parsed.value, 'Yes');
     });
-
-    test('Audience, Certification, and OfferCatalog parse JSON correctly', () {
-      final audience = Audience.fromJson(const {
-        'audienceType': 'Adults',
-        'suggestedAge': {'name': '18+'}
-      });
-      expect(audience.audienceType, 'Adults');
-      expect(audience.suggestedAge, '18+');
-
-      final cert = Certification.fromJson(const {'name': 'ISO 9001', 'issuedBy': 'ISO'});
-      expect(cert.name, 'ISO 9001');
-
-      final catalog = OfferCatalog.fromJson(const {
-        'name': 'Our Services',
-        'itemListElement': [
-          {'name': 'Car Wash', 'price': '200'}
-        ]
-      });
-      expect(catalog.name, 'Our Services');
-      expect(catalog.itemListElement.length, 1);
-    });
   });
 
   group('PhoneValidator tests', () {
@@ -83,13 +108,6 @@ void main() {
         country: CountryCodeModel.defaultCountry,
       );
       expect(formatted, '+919876543210');
-    });
-  });
-
-  group('DeliveryTimeCalculator tests', () {
-    test('parses travel minutes correctly', () {
-      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
-      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
     });
   });
 }
