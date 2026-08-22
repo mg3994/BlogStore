@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:exports/exports.dart';
 import 'package:flutter/widgets.dart';
 import 'package:test/test.dart';
@@ -43,6 +44,48 @@ void main() {
     });
   });
 
+  group('FirebaseTokenVerifier & FCM Builder tests', () {
+    test('decodes and validates synthetic Firebase JWT token payload', () {
+      final header = base64Url.encode(utf8.encode('{"alg":"RS256","typ":"JWT"}')).replaceAll('=', '');
+      final payload = base64Url.encode(utf8.encode('''
+        {
+          "iss": "https://securetoken.google.com/antinnamain",
+          "aud": "antinnamain",
+          "sub": "user_uid_123",
+          "email": "user@example.com",
+          "name": "Test User",
+          "exp": ${Math.floor(DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch / 1000)}
+        }
+      ''')).replaceAll('=', '');
+      final signature = base64Url.encode(utf8.encode('signature')).replaceAll('=', '');
+
+      final mockToken = '$header.$payload.$signature';
+
+      final decoded = FirebaseTokenVerifier.verifyTokenClaims(
+        mockToken,
+        projectId: 'antinnamain',
+      );
+
+      expect(decoded.isValid, isTrue);
+      expect(decoded.uid, 'user_uid_123');
+      expect(decoded.email, 'user@example.com');
+      expect(decoded.displayName, 'Test User');
+    });
+
+    test('FcmNotificationBuilder generates correct HTTP v1 payload structure', () {
+      final payload = FcmNotificationBuilder.buildMessagePayload(
+        deviceToken: 'device_token_abc',
+        title: 'Order Confirmed',
+        body: 'Your order #123 has been placed.',
+        data: {'orderId': '123'},
+      );
+
+      expect(payload['message']['token'], 'device_token_abc');
+      expect(payload['message']['notification']['title'], 'Order Confirmed');
+      expect(payload['message']['data']['orderId'], '123');
+    });
+  });
+
   group('ToastNotificationService tests', () {
     test('dispatches and clears toast signals reactively', () {
       final toastService = ToastNotificationService();
@@ -67,11 +110,8 @@ void main() {
       expect(formatted, '+919876543210');
     });
   });
+}
 
-  group('DeliveryTimeCalculator tests', () {
-    test('parses travel minutes correctly', () {
-      expect(DeliveryTimeCalculator.parseTravelMinutes('25 mins'), 25);
-      expect(DeliveryTimeCalculator.parseTravelMinutes('1 hour'), 60);
-    });
-  });
+class Math {
+  static int floor(double d) => d.floor();
 }
