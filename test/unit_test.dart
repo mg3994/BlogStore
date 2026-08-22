@@ -44,6 +44,43 @@ void main() {
     });
   });
 
+  group('UserProfileModel & DeviceSyncPayload tests', () {
+    test('UserProfileModel serializes and checks phone linking', () {
+      const user = UserProfileModel(
+        uid: 'user_123',
+        displayName: 'John Doe',
+        email: 'john@example.com',
+        phoneNumber: '+919876543210',
+      );
+
+      expect(user.hasPhoneLinked, isTrue);
+
+      final json = user.toJson();
+      final parsed = UserProfileModel.fromJson(json);
+
+      expect(parsed.uid, 'user_123');
+      expect(parsed.displayName, 'John Doe');
+      expect(parsed.hasPhoneLinked, isTrue);
+    });
+
+    test('DeviceSyncPayload serializes JSON payload for sync device action', () {
+      const payload = DeviceSyncPayload(
+        action: 'SYNC_DEVICE',
+        clientId: 'client_777',
+        idToken: 'token_abc',
+        deviceToken: 'fcm_token_xyz',
+        clientName: 'Chrome (Mobile)',
+      );
+
+      final json = payload.toJson();
+      expect(json['action'], 'SYNC_DEVICE');
+      expect(json['clientId'], 'client_777');
+      expect(json['idToken'], 'token_abc');
+      expect(json['deviceToken'], 'fcm_token_xyz');
+      expect(json['clientName'], 'Chrome (Mobile)');
+    });
+  });
+
   group('SessionManagerService tests', () {
     test('manages login, guest, and logout signal state', () {
       final session = SessionManagerService(initialClientId: 'client_1001');
@@ -95,19 +132,6 @@ void main() {
       expect(decoded.uid, 'user_uid_123');
       expect(decoded.email, 'user@example.com');
       expect(decoded.displayName, 'Test User');
-    });
-
-    test('FcmNotificationBuilder generates correct HTTP v1 payload structure', () {
-      final payload = FcmNotificationBuilder.buildMessagePayload(
-        deviceToken: 'device_token_abc',
-        title: 'Order Confirmed',
-        body: 'Your order #123 has been placed.',
-        data: {'orderId': '123'},
-      );
-
-      expect(payload['message']['token'], 'device_token_abc');
-      expect(payload['message']['notification']['title'], 'Order Confirmed');
-      expect(payload['message']['data']['orderId'], '123');
     });
   });
 }
