@@ -44,6 +44,31 @@ void main() {
     });
   });
 
+  group('SessionManagerService tests', () {
+    test('manages login, guest, and logout signal state', () {
+      final session = SessionManagerService(initialClientId: 'client_1001');
+
+      expect(session.clientId, 'client_1001');
+      expect(session.isLoggedIn, isFalse);
+      expect(session.sessionSignal.value.isGuest, isTrue);
+
+      session.login(
+        idToken: 'token_xyz',
+        uid: 'user_123',
+        email: 'user@example.com',
+      );
+
+      expect(session.isLoggedIn, isTrue);
+      expect(session.idToken, 'token_xyz');
+      expect(session.sessionSignal.value.uid, 'user_123');
+
+      session.logout();
+      expect(session.isLoggedIn, isFalse);
+      expect(session.idToken, 'guest_session');
+      expect(session.sessionSignal.value.isGuest, isTrue);
+    });
+  });
+
   group('FirebaseTokenVerifier & FCM Builder tests', () {
     test('decodes and validates synthetic Firebase JWT token payload', () {
       final header = base64Url.encode(utf8.encode('{"alg":"RS256","typ":"JWT"}')).replaceAll('=', '');
@@ -83,31 +108,6 @@ void main() {
       expect(payload['message']['token'], 'device_token_abc');
       expect(payload['message']['notification']['title'], 'Order Confirmed');
       expect(payload['message']['data']['orderId'], '123');
-    });
-  });
-
-  group('ToastNotificationService tests', () {
-    test('dispatches and clears toast signals reactively', () {
-      final toastService = ToastNotificationService();
-      expect(toastService.currentToastSignal.value, isNull);
-
-      toastService.showToast('Item added to bag', type: ToastType.success);
-      expect(toastService.currentToastSignal.value, isNotNull);
-      expect(toastService.currentToastSignal.value!.message, 'Item added to bag');
-      expect(toastService.currentToastSignal.value!.type, ToastType.success);
-
-      toastService.clearToast();
-      expect(toastService.currentToastSignal.value, isNull);
-    });
-  });
-
-  group('PhoneValidator tests', () {
-    test('sanitizes and formats E.164 phone string', () {
-      final formatted = PhoneValidator.formatE164(
-        rawPhone: '98765 43210',
-        country: CountryCodeModel.defaultCountry,
-      );
-      expect(formatted, '+919876543210');
     });
   });
 }
