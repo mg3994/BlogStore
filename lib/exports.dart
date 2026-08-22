@@ -9,6 +9,7 @@ import 'src/domain/models/payment_record.dart';
 import 'src/domain/models/parcel_delivery.dart';
 import 'src/domain/models/country_code.dart';
 import 'src/domain/models/catalog_details.dart';
+import 'src/domain/models/item_availability.dart';
 import 'src/domain/models/user_profile.dart';
 import 'src/domain/models/device_sync.dart';
 
@@ -62,6 +63,7 @@ export 'src/domain/models/payment_record.dart';
 export 'src/domain/models/parcel_delivery.dart';
 export 'src/domain/models/country_code.dart';
 export 'src/domain/models/catalog_details.dart';
+export 'src/domain/models/item_availability.dart';
 export 'src/domain/models/user_profile.dart';
 export 'src/domain/models/device_sync.dart';
 

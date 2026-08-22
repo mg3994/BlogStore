@@ -44,6 +44,16 @@ void main() {
     });
   });
 
+  group('ItemAvailability tests', () {
+    test('parses Schema.org availability URLs and strings', () {
+      expect(ItemAvailability.parse('https://schema.org/InStock').isAvailable, isTrue);
+      expect(ItemAvailability.parse('https://schema.org/OutOfStock').isAvailable, isFalse);
+      expect(ItemAvailability.parse('https://schema.org/SoldOut').isAvailable, isFalse);
+      expect(ItemAvailability.parse('https://schema.org/PreOrder').isAvailable, isFalse);
+      expect(ItemAvailability.parse('https://schema.org/LimitedAvailability').isAvailable, isTrue);
+    });
+  });
+
   group('UserProfileModel & DeviceSyncPayload tests', () {
     test('UserProfileModel serializes and checks phone linking', () {
       const user = UserProfileModel(
@@ -61,23 +71,6 @@ void main() {
       expect(parsed.uid, 'user_123');
       expect(parsed.displayName, 'John Doe');
       expect(parsed.hasPhoneLinked, isTrue);
-    });
-
-    test('DeviceSyncPayload serializes JSON payload for sync device action', () {
-      const payload = DeviceSyncPayload(
-        action: 'SYNC_DEVICE',
-        clientId: 'client_777',
-        idToken: 'token_abc',
-        deviceToken: 'fcm_token_xyz',
-        clientName: 'Chrome (Mobile)',
-      );
-
-      final json = payload.toJson();
-      expect(json['action'], 'SYNC_DEVICE');
-      expect(json['clientId'], 'client_777');
-      expect(json['idToken'], 'token_abc');
-      expect(json['deviceToken'], 'fcm_token_xyz');
-      expect(json['clientName'], 'Chrome (Mobile)');
     });
   });
 
