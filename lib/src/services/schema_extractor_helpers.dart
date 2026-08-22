@@ -69,4 +69,52 @@ class SchemaExtractorHelpers {
 
     return null;
   }
+
+  /// Extracts advance booking requirement formatted string (e.g. "24 Hours", "2 Days").
+  static String? extractAdvanceBookingRequirement(Map<String, dynamic>? schema) {
+    if (schema == null) return null;
+
+    final abr = schema['advanceBookingRequirement'] ??
+        schema['offers']?['advanceBookingRequirement'] ??
+        schema['itemOffered']?['offers']?['advanceBookingRequirement'];
+
+    if (abr == null) return null;
+
+    if (abr is String) return abr;
+
+    if (abr is Map<String, dynamic>) {
+      final val = abr['value']?.toString() ?? '';
+      final unit = (abr['unitCode'] ?? abr['unitText'])?.toString().toUpperCase() ?? '';
+
+      String unitLabel = unit;
+      if (unit == 'HUR' || unit == 'HOUR' || unit == 'HOURS') unitLabel = 'Hours';
+      if (unit == 'DAY' || unit == 'DAYS') unitLabel = 'Days';
+
+      return '$val $unitLabel'.trim();
+    }
+
+    return abr.toString();
+  }
+
+  /// Extracts accepted payment methods list from schema.
+  static List<String> extractAcceptedPaymentMethods(Map<String, dynamic>? schema) {
+    if (schema == null) return const [];
+
+    final rawMethods = schema['acceptedPaymentMethod'] ??
+        schema['offers']?['acceptedPaymentMethod'] ??
+        schema['itemOffered']?['offers']?['acceptedPaymentMethod'];
+
+    if (rawMethods == null) return const [];
+
+    if (rawMethods is List) {
+      return rawMethods
+          .map((m) => m.toString().replaceAll('https://schema.org/', '').replaceAll('http://schema.org/', ''))
+          .where((m) => m.isNotEmpty)
+          .toList();
+    }
+
+    return [
+      rawMethods.toString().replaceAll('https://schema.org/', '').replaceAll('http://schema.org/', '')
+    ];
+  }
 }

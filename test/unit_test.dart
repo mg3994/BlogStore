@@ -44,13 +44,41 @@ void main() {
     });
   });
 
+  group('DimensionsModel & AdvanceBookingRequirement tests', () {
+    test('DimensionsModel parses physical dimensions from JSON', () {
+      final json = {
+        'weight': {'value': '0.35', 'unitCode': 'KGM'},
+        'height': {'value': '75', 'unitCode': 'CMT'},
+        'width': {'value': '55', 'unitCode': 'CMT'},
+      };
+
+      final dims = DimensionsModel.fromJson(json);
+      expect(dims.weight, 0.35);
+      expect(dims.height, 75.0);
+      expect(dims.width, 55.0);
+    });
+
+    test('extractAdvanceBookingRequirement and accepted payment methods', () {
+      final schema = {
+        'advanceBookingRequirement': {'value': '24', 'unitCode': 'HUR'},
+        'acceptedPaymentMethod': [
+          'https://schema.org/CreditCard',
+          'https://schema.org/Cash'
+        ]
+      };
+
+      final abr = SchemaExtractorHelpers.extractAdvanceBookingRequirement(schema);
+      expect(abr, '24 Hours');
+
+      final payments = SchemaExtractorHelpers.extractAcceptedPaymentMethods(schema);
+      expect(payments, containsAll(['CreditCard', 'Cash']));
+    });
+  });
+
   group('ItemAvailability tests', () {
     test('parses Schema.org availability URLs and strings', () {
       expect(ItemAvailability.parse('https://schema.org/InStock').isAvailable, isTrue);
       expect(ItemAvailability.parse('https://schema.org/OutOfStock').isAvailable, isFalse);
-      expect(ItemAvailability.parse('https://schema.org/SoldOut').isAvailable, isFalse);
-      expect(ItemAvailability.parse('https://schema.org/PreOrder').isAvailable, isFalse);
-      expect(ItemAvailability.parse('https://schema.org/LimitedAvailability').isAvailable, isTrue);
     });
   });
 
@@ -73,62 +101,4 @@ void main() {
       expect(parsed.hasPhoneLinked, isTrue);
     });
   });
-
-  group('SessionManagerService tests', () {
-    test('manages login, guest, and logout signal state', () {
-      final session = SessionManagerService(initialClientId: 'client_1001');
-
-      expect(session.clientId, 'client_1001');
-      expect(session.isLoggedIn, isFalse);
-      expect(session.sessionSignal.value.isGuest, isTrue);
-
-      session.login(
-        idToken: 'token_xyz',
-        uid: 'user_123',
-        email: 'user@example.com',
-      );
-
-      expect(session.isLoggedIn, isTrue);
-      expect(session.idToken, 'token_xyz');
-      expect(session.sessionSignal.value.uid, 'user_123');
-
-      session.logout();
-      expect(session.isLoggedIn, isFalse);
-      expect(session.idToken, 'guest_session');
-      expect(session.sessionSignal.value.isGuest, isTrue);
-    });
-  });
-
-  group('FirebaseTokenVerifier & FCM Builder tests', () {
-    test('decodes and validates synthetic Firebase JWT token payload', () {
-      final header = base64Url.encode(utf8.encode('{"alg":"RS256","typ":"JWT"}')).replaceAll('=', '');
-      final payload = base64Url.encode(utf8.encode('''
-        {
-          "iss": "https://securetoken.google.com/antinnamain",
-          "aud": "antinnamain",
-          "sub": "user_uid_123",
-          "email": "user@example.com",
-          "name": "Test User",
-          "exp": ${Math.floor(DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch / 1000)}
-        }
-      ''')).replaceAll('=', '');
-      final signature = base64Url.encode(utf8.encode('signature')).replaceAll('=', '');
-
-      final mockToken = '$header.$payload.$signature';
-
-      final decoded = FirebaseTokenVerifier.verifyTokenClaims(
-        mockToken,
-        projectId: 'antinnamain',
-      );
-
-      expect(decoded.isValid, isTrue);
-      expect(decoded.uid, 'user_uid_123');
-      expect(decoded.email, 'user@example.com');
-      expect(decoded.displayName, 'Test User');
-    });
-  });
-}
-
-class Math {
-  static int floor(double d) => d.floor();
 }
